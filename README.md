@@ -17,8 +17,3 @@ TODO: names and GitHub usernames
 | **Processing** | The loader cleans the CSV (duplicates, an empty row, different popularity for the same track, unknown values), splits it into 6 tables and loads them with `COPY`. The analysis is 8 SQL queries (`common/queries.py`). |
 | **Output** | A Streamlit dashboard: pick a question, see a chart, the table, and how long the query took. |
 | **Measurements** | Load time (row-by-row `INSERT` vs `COPY`), time of each query with and without indexes, peak memory per container, database size vs CSV size, at 25%, 50% and 100% of the tracks. |
-
-## How this repository was built
-
-The first version was developed offline until 6 November 2026. As agreed with the lecturer, it
-was then uploaded to GitHub in parts, one part per team member, each through a pull request.
