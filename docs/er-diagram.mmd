@@ -1,0 +1,46 @@
+erDiagram
+  ARTIST ||--|{ ARTIST_TRACK : "performs"
+  TRACK ||--|{ ARTIST_TRACK : "is performed by"
+  GENRE ||--|{ TRACK_GENRE : "contains"
+  TRACK ||--|{ TRACK_GENRE : "is listed under"
+  TRACK ||--|| AUDIO_FEATURES : "has"
+  ARTIST {
+    int artist_id PK
+    text artist_name UK
+  }
+  GENRE {
+    int genre_id PK
+    text genre_name UK
+  }
+  TRACK {
+    char22 track_id PK
+    text track_name
+    text album_name
+    smallint popularity
+    int duration_ms
+    boolean explicit
+  }
+  ARTIST_TRACK {
+    int artist_id PK,FK
+    char22 track_id PK,FK
+    smallint position
+  }
+  TRACK_GENRE {
+    char22 track_id PK,FK
+    int genre_id PK,FK
+  }
+  AUDIO_FEATURES {
+    char22 track_id PK,FK
+    real danceability
+    real energy
+    real valence
+    real acousticness
+    real instrumentalness
+    real liveness
+    real speechiness
+    real loudness
+    real tempo
+    enum key_signature
+    enum mode
+    smallint time_signature
+  }
