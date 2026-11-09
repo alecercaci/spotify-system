@@ -1,0 +1,4 @@
+# Exact versions, so every laptop builds the same image
+streamlit==1.40.2        # the dashboard (includes Altair for the charts)
+pandas==2.2.3            # query results as tables
+psycopg[binary]==3.2.3   # talking to PostgreSQL
