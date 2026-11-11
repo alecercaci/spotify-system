@@ -17,3 +17,44 @@ TODO: names and GitHub usernames
 | **Processing** | The loader cleans the CSV (duplicates, an empty row, different popularity for the same track, unknown values), splits it into 6 tables and loads them with `COPY`. The analysis is 8 SQL queries (`common/queries.py`). |
 | **Output** | A Streamlit dashboard: pick a question, see a chart, the table, and how long the query took. |
 | **Measurements** | Load time (row-by-row `INSERT` vs `COPY`), time of each query with and without indexes, peak memory per container, database size vs CSV size, at 25%, 50% and 100% of the tracks. |
+
+## Measurements
+
+Laptop: MacBook Pro 13" (2020), Apple M1, 8 GB RAM, macOS Sequoia 15.3, Docker Desktop for Mac.
+Every time is the average of 3 runs. Sizes are a random 25%, 50% and 100% of the tracks.
+Full results: `measure/results/results.md`.
+
+| Measurement | 25% | 50% | 100% |
+|---|---|---|---|
+| Tracks | 22,435 | 44,870 | 89,740 |
+| Full run of the loader, start to end (without secondary indexes) | 1.95 s | 3.15 s | 5.49 s |
+| Load with `COPY` | 1.05 s | 2.13 s | 4.35 s |
+| Load row by row (`INSERT`) | 11.2 s | 21.7 s | 43.0 s |
+| Query 1 (most popular genres), no index / index | 9.1 / 8.6 ms | 18.9 / 17.7 ms | 38.3 / 35.7 ms |
+| Query 8 (tracks in most genres), no index / index | 101 / 101 ms | 205 / 202 ms | 462 / 461 ms |
+| Find a track by name, no index / index | 1.0 / 0.1 ms | 1.9 / 0.1 ms | 3.8 / 0.1 ms |
+| 10 most popular tracks, no index / index | 1.9 / 0.1 ms | 3.7 / 0.1 ms | 6.1 / 0.1 ms |
+| Tables on disk (with indexes) | 19.0 MB | 36.7 MB | 71.3 MB |
+| Same data as CSV | 5.0 MB | 10.1 MB | 20.1 MB |
+
+Peak memory (`measure/memory.sh`, during the benchmark and a normal load): `db` 146 MiB,
+benchmark 247 MiB, `loader` 184 MiB, `app` 34 MiB.
+
+**What the numbers mean**
+
+- **Loading grows linearly.** With `COPY`, 2× the tracks takes 2× the time (1.05 → 2.13 → 4.35 s).
+  The full run adds about 1 s more: reading and cleaning the CSV in pandas (the benchmark loads
+  without the secondary indexes, so building them is not included).
+- **`COPY` is about 10× faster than one `INSERT` per row** (4.4 s vs 43 s for all the data).
+  Each `INSERT` is a separate round trip to the database; `COPY` sends a whole table in one go.
+- **Indexes help when a query needs a few rows, not when it reads everything.** Finding a track by
+  name or the 10 most popular tracks goes from milliseconds to under 0.1 ms (about 40× and 60×
+  faster), and with the index the time stays the same as the data grows, while without it it
+  grows with the data (the database has to scan the whole table). The 8 analysis queries group
+  all the tracks, so they read every row anyway: the index changes almost nothing.
+- **Query 8 is the slowest** (0.46 s): it joins five tables and builds text lists
+  (`STRING_AGG`) for every track before keeping the top 15.
+- **The database is about 3.5× bigger than the CSV** (71 MB vs 20 MB). About 10 MB are the
+  indexes; the rest comes from the 22-character `track_id` repeated in four tables, the two
+  link tables, and the space PostgreSQL adds to every row.
+- **Memory stays low**: the database never used more than 146 MiB, under 2% of the laptop's 8 GB.
