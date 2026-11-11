@@ -1,0 +1,60 @@
+# Starts the whole system with one command: docker compose up --build
+# Order: db first, then loader (once the database answers), then app (once the loader is done).
+# Inside this network every service reaches the others by name: the database is "db".
+
+services:
+  # PostgreSQL, ready-made image. The named volume keeps the data when containers stop.
+  db:
+    image: postgres:16
+    env_file: .env
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    # "healthy" only when PostgreSQL accepts connections, so the loader never starts too early
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  # Downloads the CSV into ./data, cleans it, fills the database, then exits.
+  loader:
+    build:
+      context: .
+      dockerfile: loader/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Streamlit dashboard, open http://localhost:8501 on the laptop.
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    env_file: .env
+    ports:
+      - "8501:8501"
+    depends_on:
+      loader:
+        condition: service_completed_successfully
+
+  # Measurements. Not started by "up": run it with
+  #   docker compose --profile measure run --rm --build benchmark
+  # It uses the loader image and writes its results to ./measure/results on the laptop.
+  benchmark:
+    profiles: ["measure"]
+    build:
+      context: .
+      dockerfile: loader/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data:/data
+      - ./measure/results:/project/measure/results
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "measure/benchmark.py"]
+
+volumes:
+  dbdata:

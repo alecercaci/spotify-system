@@ -1,0 +1,14 @@
+flowchart LR
+  csv["Spotify Tracks CSV<br/>(Hugging Face,<br/>114,000 rows, 20 MB)"]
+  subgraph compose["docker compose"]
+    loader["loader<br/>Python + pandas"]
+    db[("db<br/>PostgreSQL 16")]
+    app["app<br/>Streamlit"]
+    bench["benchmark<br/>(--profile measure)"]
+  end
+  user(["Browser<br/>localhost:8501"])
+  csv -- "download (HTTPS)" --> loader
+  loader -- "COPY rows" --> db
+  db -- "SQL results" --> app
+  app -- "web page" --> user
+  bench -. "reload at 25%, 50%, 100%,<br/>time queries" .-> db
