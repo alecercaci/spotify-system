@@ -24,6 +24,31 @@ popular tracks on Spotify?
 | **Output** | A Streamlit dashboard: pick a question, see a chart, the table, and how long the query took. |
 | **Measurements** | Load time (row-by-row `INSERT` vs `COPY`), time of each query with and without indexes, peak memory per container, database size vs CSV size, at 25%, 50% and 100% of the tracks. |
 
+## Data
+
+Each row of the file is a track **in one genre**: the dataset has about 1,000 tracks per genre,
+chosen by its author, so it is not a random sample of everything on Spotify.
+`popularity` is Spotify's score from 0 to 100, based on how much the track is played recently.
+
+The loader downloads the CSV into `data/spotify-tracks.csv` the first time it runs (the folder is
+empty on GitHub). It is cleaned in `loader/load.py` (`clean()`), which prints what it changed:
+
+| Problem in the original file | How many | What we do |
+|---|---|---|
+| Rows identical in every column | 450 rows | Dropped |
+| Track with no name, artist or album | 1 row | Dropped |
+| Same track listed under several genres | 16,299 tracks (up to 9 genres) | One row in `track`, one row per genre in `track_genre` |
+| Same track with a different popularity in different genre rows | 720 tracks | Keep the highest value |
+| `tempo` = 0 (unknown) | 157 tracks | `NULL` |
+| `time_signature` = 0 (unknown) | 162 tracks | `NULL` |
+| `key` and `mode` stored as numbers (0–11, 0/1) | all | Labels: `C`, `C#`... and `Major` / `Minor` |
+
+Result: 113,549 rows kept, **89,740 distinct tracks**, 29,858 artists, 114 genres.
+
+For the measurements the loader can keep a **random** part of the tracks (`--scale 0.25`), always
+the same thanks to a fixed seed. Random, not the first rows, because the file is sorted by genre:
+the first 25% of the rows would contain only the first genres.
+
 ## How to run
 
 You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) running and Git.
