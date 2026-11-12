@@ -22,7 +22,7 @@ TODO: names and GitHub usernames
 
 Laptop: MacBook Pro 13" (2020), Apple M1, 8 GB RAM, macOS Sequoia 15.3, Docker Desktop for Mac.
 Every time is the average of 3 runs. Sizes are a random 25%, 50% and 100% of the tracks.
-Full results: `measure/results/results.md`.
+The benchmark also saves every run in `measure/results/` on the laptop that runs it (not uploaded to GitHub).
 
 | Measurement | 25% | 50% | 100% |
 |---|---|---|---|
