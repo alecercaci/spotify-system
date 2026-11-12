@@ -5,7 +5,13 @@ popular tracks on Spotify?
 
 ## Team
 
-TODO: names and GitHub usernames
+| Name | GitHub |
+|---|---|
+| Alessia Maria Cercaci | [@alecercaci](https://github.com/alecercaci) |
+| Andrea Liviano D'Arcangelo | [@andrealiviano](https://github.com/andrealiviano) |
+| Giacomo Antonetti | [@giacomo-antonetti](https://github.com/giacomo-antonetti) |
+| Alessandro Vittiglio | [@Alessandro-Vittiglio](https://github.com/Alessandro-Vittiglio) |
+| Beksultan Ernisovich Satybaldiev | [@Kekis12](https://github.com/Kekis12) |
 
 ## The six questions
 
