@@ -18,6 +18,71 @@ TODO: names and GitHub usernames
 | **Output** | A Streamlit dashboard: pick a question, see a chart, the table, and how long the query took. |
 | **Measurements** | Load time (row-by-row `INSERT` vs `COPY`), time of each query with and without indexes, peak memory per container, database size vs CSV size, at 25%, 50% and 100% of the tracks. |
 
+## How to run
+
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) running and Git.
+
+1. Clone the repository and enter the folder:
+
+   ```
+   git clone https://github.com/alecercaci/spotify-system.git
+   cd spotify-system
+   ```
+
+2. Create the settings file from the example (database name, user, password, link to the CSV):
+
+   ```
+   cp .env.example .env
+   ```
+
+3. Start everything with one command:
+
+   ```
+   docker compose up --build
+   ```
+
+   The first run downloads the CSV, cleans it and fills the database; this takes a few seconds.
+   When the `loader` finishes, the dashboard starts.
+
+4. Open the dashboard at http://localhost:8501.
+
+To stop, press `Ctrl+C`, then `docker compose down`. The data stays in the `dbdata` volume;
+`docker compose down -v` deletes it too, so the next run starts from an empty database.
+
+**Measurements** (not started by `up`):
+
+```
+docker compose --profile measure run --rm --build benchmark
+```
+
+The results are written to `measure/results/`. To record peak memory per container, run
+`measure/memory.sh` in a second terminal while the benchmark or a normal load is running.
+
+## Architecture
+
+![Architecture](docs/architecture.png)
+
+The system is four Docker services defined in `docker-compose.yml`, on one Docker network where
+each service reaches the others by name (the database is simply `db`).
+
+| Service | What it does | Lifetime |
+|---|---|---|
+| `db` | PostgreSQL 16. Stores the 6 tables. A named volume (`dbdata`) keeps the data when containers stop. | Always on |
+| `loader` | Downloads the CSV into `./data`, cleans it with pandas, creates the tables (`sql/schema.sql`), loads them with `COPY` and adds the indexes (`sql/indexes.sql`). | Runs once, then exits |
+| `app` | Streamlit dashboard (`app/dashboard.py`) on port 8501: runs the 8 analysis queries and shows chart, table and query time. | Always on |
+| `benchmark` | Same image as the loader, runs `measure/benchmark.py` and writes the results to `./measure/results`. | Only on request (`measure` profile) |
+
+**Start order.** Compose starts `db` first and waits until PostgreSQL accepts connections
+(healthcheck with `pg_isready`). Only then it starts the `loader`, and only when the loader has
+finished successfully it starts the `app`. So the dashboard never opens on an empty database.
+
+**Shared code.** The connection to the database (`common/db.py`) and the 8 SQL queries
+(`common/queries.py`) are in one folder used by the loader, the dashboard and the benchmark, so
+the dashboard and the measurements run exactly the same queries.
+
+**Database schema.** The 6 tables and the foreign keys between them are drawn in
+`docs/er-diagram.png`.
+
 ## Measurements
 
 Laptop: MacBook Pro 13" (2020), Apple M1, 8 GB RAM, macOS Sequoia 15.3, Docker Desktop for Mac.
