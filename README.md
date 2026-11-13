@@ -45,6 +45,21 @@ empty on GitHub). It is cleaned in `loader/load.py` (`clean()`), which prints wh
 
 Result: 113,549 rows kept, **89,740 distinct tracks**, 29,858 artists, 114 genres.
 
+**From 114,000 rows to 89,740 tracks.** Almost nothing is lost: the two numbers count different things.
+
+| Step | Rows |
+|---|---|
+| Original CSV | 114,000 |
+| Exact duplicates dropped | −450 |
+| Row with no name, artist or album dropped | −1 |
+| **Rows kept**, one per (track, genre): table `track_genre` | **113,549** |
+| Same track repeated under other genres | −23,809 |
+| **Distinct tracks**: table `track` | **89,740** |
+
+A row of the CSV is a track *in one genre*. 16,299 tracks are listed under 2 to 9 genres, so they
+fill 23,809 more rows than there are tracks. We keep every genre in `track_genre` and store each
+track once in `track`.
+
 For the measurements the loader can keep a **random** part of the tracks (`--scale 0.25`), always
 the same thanks to a fixed seed. Random, not the first rows, because the file is sorted by genre:
 the first 25% of the rows would contain only the first genres.
