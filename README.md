@@ -89,6 +89,12 @@ docker compose --profile measure run --rm --build benchmark
 The results are written to `measure/results/`. To record peak memory per container, run
 `measure/memory.sh` in a second terminal while the benchmark or a normal load is running.
 
+## Dashboard
+
+![Dashboard](docs/dashboard.png)
+
+Pick one of the 8 questions: the dashboard runs its SQL query on PostgreSQL and shows a chart, the table and how long the query took.
+
 ## Architecture
 
 ![Architecture](docs/architecture.png)
