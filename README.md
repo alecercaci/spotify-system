@@ -137,44 +137,48 @@ the dashboard and the measurements run exactly the same queries.
 
 ## Measurements
 
-Laptop: MacBook Pro 13" (2020), Apple M1, 8 GB RAM, macOS Sequoia 15.3, Docker Desktop for Mac.
+Laptop: MacBook Pro 16" (Apple M5), Docker Desktop for Mac with 7.7 GiB of memory for the containers.
 Every time is the average of 3 runs. Sizes are a random 25%, 50% and 100% of the tracks.
 The benchmark also saves every run in `measure/results/` on the laptop that runs it (not uploaded to GitHub).
 
 | Measurement | 25% | 50% | 100% |
 |---|---|---|---|
 | Tracks | 22,435 | 44,870 | 89,740 |
-| Full run of the loader, start to end (without secondary indexes) | 1.95 s | 3.15 s | 5.49 s |
-| Load with `COPY` | 1.05 s | 2.13 s | 4.35 s |
-| Load row by row (`INSERT`) | 11.2 s | 21.7 s | 43.0 s |
-| Query 1 (most popular genres), no index / index | 9.1 / 8.6 ms | 18.9 / 17.7 ms | 38.3 / 35.7 ms |
-| Query 8 (tracks in most genres), no index / index | 101 / 101 ms | 205 / 202 ms | 462 / 461 ms |
-| Find a track by name, no index / index | 1.0 / 0.1 ms | 1.9 / 0.1 ms | 3.8 / 0.1 ms |
-| 10 most popular tracks, no index / index | 1.9 / 0.1 ms | 3.7 / 0.1 ms | 6.1 / 0.1 ms |
+| Full run of the loader, start to end (without secondary indexes) | 1.05 s | 1.69 s | 2.94 s |
+| Load with `COPY` | 0.58 s | 1.16 s | 2.33 s |
+| Load row by row (`INSERT`) | 5.5 s | 10.7 s | 20.8 s |
+| Query 1 (most popular genres), no index / index | 5.3 / 5.1 ms | 10.9 / 11.0 ms | 22.6 / 20.9 ms |
+| Query 8 (tracks in most genres), no index / index | 52 / 56 ms | 118 / 109 ms | 235 / 234 ms |
+| Find a track by name, no index / index | 0.6 / 0.1 ms | 1.1 / 0.1 ms | 2.1 / 0.1 ms |
+| 10 most popular tracks, no index / index | 1.2 / 0.1 ms | 2.3 / 0.1 ms | 3.5 / 0.1 ms |
 | Tables on disk (with indexes) | 19.0 MB | 36.7 MB | 71.3 MB |
 | Same data as CSV | 5.0 MB | 10.1 MB | 20.1 MB |
 
-Peak memory (`measure/memory.sh`, during the benchmark and a normal load): `db` 146 MiB,
-benchmark 247 MiB, `loader` 184 MiB, `app` 34 MiB.
+Peak memory (`measure/memory.sh`, during the benchmark): `db` 195 MiB, benchmark 318 MiB.
+
+A first run on another laptop (MacBook Pro 13" with Apple M1) was about twice as slow
+(`COPY` 4.35 s and `INSERT` 43.0 s for all the data), but the same patterns held.
 
 **What the numbers mean**
 
-- **Loading grows linearly.** With `COPY`, 2× the tracks takes 2× the time (1.05 → 2.13 → 4.35 s).
-  The full run adds about 1 s more: reading and cleaning the CSV in pandas (the benchmark loads
+- **Loading grows linearly.** With `COPY`, 2× the tracks takes 2× the time (0.58 → 1.16 → 2.33 s).
+  The full run adds about 0.6 s more: reading and cleaning the CSV in pandas (the benchmark loads
   without the secondary indexes, so building them is not included).
-- **`COPY` is about 10× faster than one `INSERT` per row** (4.4 s vs 43 s for all the data).
+- **`COPY` is about 9× faster than one `INSERT` per row** (2.3 s vs 20.8 s for all the data).
   Each `INSERT` is a separate round trip to the database; `COPY` sends a whole table in one go.
 - **Indexes help when a query needs a few rows, not when it reads everything.** Finding a track by
-  name or the 10 most popular tracks goes from milliseconds to under 0.1 ms (about 40× and 60×
+  name or the 10 most popular tracks goes from a few milliseconds to about 0.1 ms (about 20× and 35×
   faster), and with the index the time stays the same as the data grows, while without it it
   grows with the data (the database has to scan the whole table). The 8 analysis queries group
-  all the tracks, so they read every row anyway: the index changes almost nothing.
-- **Query 8 is the slowest** (0.46 s): it joins five tables and builds text lists
+  all the tracks, so they read every row anyway: the index changes almost nothing, and the small
+  differences (a few tenths of a millisecond either way) are noise.
+- **Query 8 is the slowest** (0.23 s): it joins five tables and builds text lists
   (`STRING_AGG`) for every track before keeping the top 15.
 - **The database is about 3.5× bigger than the CSV** (71 MB vs 20 MB). About 10 MB are the
   indexes; the rest comes from the 22-character `track_id` repeated in four tables, the two
   link tables, and the space PostgreSQL adds to every row.
-- **Memory stays low**: the database never used more than 146 MiB, under 2% of the laptop's 8 GB.
+- **Memory stays low**: the database never used more than 195 MiB, about 2.5% of the 7.7 GiB
+  that Docker had.
 
 ## What went wrong
 
@@ -184,9 +188,9 @@ The problems we met while building and uploading the system, and how we solved t
 |---|---|
 | The CSV was messier than it looked: 450 duplicate rows, one empty row, 16,299 tracks repeated under several genres, 720 tracks with a different popularity in each genre, `0` used for "unknown" tempo and time signature. | We wrote `clean()` in the loader, which fixes each case and prints what it changed (see [Data](#data)). |
 | Some track and album names are longer than 500 characters, so a fixed-length text column would cut them. | All names are `TEXT` in `sql/schema.sql`. |
-| Loading one row at a time with `INSERT` was slow: 43 s for all the data. | The loader uses `COPY`, which sends a whole table at once: 4.4 s, about 10× faster. |
+| Loading one row at a time with `INSERT` was slow: 20.8 s for all the data (43 s on the first laptop). | The loader uses `COPY`, which sends a whole table at once: 2.3 s, about 9× faster. |
 | Taking the first 25% or 50% of the rows for the measurements gave only the first genres, because the file is sorted by genre. | The loader keeps a **random** part of the tracks, with a fixed seed so every run uses the same tracks. |
-| We expected the indexes to speed up the 8 analysis queries, but they changed almost nothing. | The analysis queries group all the tracks, so they read every row anyway. Indexes help when a query needs a few rows: finding a track by name became about 40× faster. We report both in [Measurements](#measurements). |
+| We expected the indexes to speed up the 8 analysis queries, but they changed almost nothing. | The analysis queries group all the tracks, so they read every row anyway. Indexes help when a query needs a few rows: finding a track by name became about 20× faster. We report both in [Measurements](#measurements). |
 | Uploading in parts: after the Docker Compose commit alone the system did not start, because the loader image needs `measure/` and the loader runs `sql/indexes.sql`, which came in a later commit. | We merged the indexes and benchmark pull request (#5) before the Docker Compose one (#4). |
 | Two pull requests added a section in the same place of the README (Data and How to run), so GitHub reported a merge conflict. | We resolved it on GitHub, keeping both sections, one after the other. |
 | The README pointed to `measure/results/results.md`, but `measure/results/` is in `.gitignore`, so the file never reaches GitHub. | Pull request #10 changed the line to say where the benchmark saves its results on your own laptop. |
