@@ -175,3 +175,18 @@ benchmark 247 MiB, `loader` 184 MiB, `app` 34 MiB.
   indexes; the rest comes from the 22-character `track_id` repeated in four tables, the two
   link tables, and the space PostgreSQL adds to every row.
 - **Memory stays low**: the database never used more than 146 MiB, under 2% of the laptop's 8 GB.
+
+## What went wrong
+
+The problems we met while building and uploading the system, and how we solved them.
+
+| Problem | What we did |
+|---|---|
+| The CSV was messier than it looked: 450 duplicate rows, one empty row, 16,299 tracks repeated under several genres, 720 tracks with a different popularity in each genre, `0` used for "unknown" tempo and time signature. | We wrote `clean()` in the loader, which fixes each case and prints what it changed (see [Data](#data)). |
+| Some track and album names are longer than 500 characters, so a fixed-length text column would cut them. | All names are `TEXT` in `sql/schema.sql`. |
+| Loading one row at a time with `INSERT` was slow: 43 s for all the data. | The loader uses `COPY`, which sends a whole table at once: 4.4 s, about 10× faster. |
+| Taking the first 25% or 50% of the rows for the measurements gave only the first genres, because the file is sorted by genre. | The loader keeps a **random** part of the tracks, with a fixed seed so every run uses the same tracks. |
+| We expected the indexes to speed up the 8 analysis queries, but they changed almost nothing. | The analysis queries group all the tracks, so they read every row anyway. Indexes help when a query needs a few rows: finding a track by name became about 40× faster. We report both in [Measurements](#measurements). |
+| Uploading in parts: after the Docker Compose commit alone the system did not start, because the loader image needs `measure/` and the loader runs `sql/indexes.sql`, which came in a later commit. | We merged the indexes and benchmark pull request (#5) before the Docker Compose one (#4). |
+| Two pull requests added a section in the same place of the README (Data and How to run), so GitHub reported a merge conflict. | We resolved it on GitHub, keeping both sections, one after the other. |
+| The README pointed to `measure/results/results.md`, but `measure/results/` is in `.gitignore`, so the file never reaches GitHub. | Pull request #10 changed the line to say where the benchmark saves its results on your own laptop. |
