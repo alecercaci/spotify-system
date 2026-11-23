@@ -194,3 +194,17 @@ The problems we met while building and uploading the system, and how we solved t
 | Uploading in parts: after the Docker Compose commit alone the system did not start, because the loader image needs `measure/` and the loader runs `sql/indexes.sql`, which came in a later commit. | We merged the indexes and benchmark pull request (#5) before the Docker Compose one (#4). |
 | Two pull requests added a section in the same place of the README (Data and How to run), so GitHub reported a merge conflict. | We resolved it on GitHub, keeping both sections, one after the other. |
 | The README pointed to `measure/results/results.md`, but `measure/results/` is in `.gitignore`, so the file never reaches GitHub. | Pull request #10 changed the line to say where the benchmark saves its results on your own laptop. |
+
+## Who did what
+
+Every member built one part of the system, wrote one part of the README and reviewed the
+pull requests of the others: nobody merged their own work.
+
+| Member | Part of the system | README | Reviewed and merged |
+|---|---|---|---|
+| Alessia | Created the GitHub repository and added the team, `.gitignore`, `.env.example` (settings and data link) | Question and dataset, How to run, Architecture, Team, Who did what | #4, #10, #11, #13 |
+| Andrea | Database schema (`sql/schema.sql`) and ER diagram, secondary indexes (`sql/indexes.sql`), benchmark (`measure/benchmark.py`) | What went wrong | #8, #12 |
+| Giacomo | Loader (`loader/`): download, cleaning, load with `COPY`; database connection (`common/db.py`); memory script (`measure/memory.sh`) | New measurements after re-running the benchmark | #2, #5, #14 |
+| Alessandro | The 8 analysis queries (`common/queries.py`) and the Streamlit dashboard (`app/`) | Measurements table and what the numbers mean, dashboard screenshot | #1, #6, #9, #15 |
+| Beksultan | Docker Compose (`docker-compose.yml`) and architecture diagram | Data: the cleaning table and how 114,000 rows become 89,740 tracks | #3, #7 |
+
